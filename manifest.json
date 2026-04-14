@@ -1,0 +1,11 @@
+{
+    "display_name": "Better Image Generation",
+    "loading_order": 15,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "css": "style.css",
+    "author": "btuli",
+    "version": "1.0.0",
+    "homePage": ""
+}

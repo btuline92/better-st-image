@@ -1,0 +1,136 @@
+<div class="better-image-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>Better Image Generation</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+
+            <!-- ComfyUI Connection -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <b>ComfyUI Connection</b>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label for="bimg_comfy_url">ComfyUI URL</label>
+                    <div class="flex-container flexnowrap">
+                        <input id="bimg_comfy_url" type="text" class="text_pole" placeholder="http://127.0.0.1:8188" />
+                        <div id="bimg_comfy_validate" class="menu_button menu_button_icon">
+                            <i class="fa-solid fa-check"></i>
+                            <span>Connect</span>
+                        </div>
+                    </div>
+                    <label for="bimg_comfy_workflow">Workflow</label>
+                    <select id="bimg_comfy_workflow" class="text_pole">
+                        <option value="">-- Connect to load workflows --</option>
+                    </select>
+                </div>
+            </div>
+
+            <hr class="sysHR" />
+
+            <!-- Image Generation Preset -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <b>Image Generation Preset</b>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label for="bimg_system_prompt">System Prompt for Image Generation</label>
+                    <small>This replaces the full chat preset when generating image prompts via the LLM.</small>
+                    <textarea id="bimg_system_prompt" class="text_pole textarea_compact" rows="6" placeholder="Instructions for the LLM when generating image prompts..."></textarea>
+                </div>
+            </div>
+
+            <hr class="sysHR" />
+
+            <!-- Prompt Prefixes -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <b>Prompt Prefixes</b>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label for="bimg_prompt_prefix">Global Prompt Prefix</label>
+                    <textarea id="bimg_prompt_prefix" class="text_pole textarea_compact" rows="2" placeholder="best quality, masterpiece,"></textarea>
+                    <label for="bimg_negative_prompt">Global Negative Prompt</label>
+                    <textarea id="bimg_negative_prompt" class="text_pole textarea_compact" rows="2" placeholder="lowres, bad anatomy, worst quality,"></textarea>
+                    <label for="bimg_char_prompt">Character Prompt Prefix</label>
+                    <textarea id="bimg_char_prompt" class="text_pole textarea_compact" rows="2" placeholder="Per-character positive prompt prefix"></textarea>
+                    <label for="bimg_char_negative">Character Negative Prompt</label>
+                    <textarea id="bimg_char_negative" class="text_pole textarea_compact" rows="2" placeholder="Per-character negative prompt"></textarea>
+                </div>
+            </div>
+
+            <hr class="sysHR" />
+
+            <!-- Generation Mode Prompts -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <b>Mode Prompts</b>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label for="bimg_portrait_prompt">Portrait Prompt</label>
+                    <small>LLM instruction template for character portraits. Use {{char}} and {{user}} macros.</small>
+                    <textarea id="bimg_portrait_prompt" class="text_pole textarea_compact" rows="4"></textarea>
+                    <label for="bimg_scene_prompt">Scene Prompt</label>
+                    <small>LLM instruction template for current scene descriptions.</small>
+                    <textarea id="bimg_scene_prompt" class="text_pole textarea_compact" rows="4"></textarea>
+                    <label for="bimg_freeform_instruction">Free-form Instruction</label>
+                    <small>LLM instruction prepended to free-form input. Use {{input}} for the user's text.</small>
+                    <textarea id="bimg_freeform_instruction" class="text_pole textarea_compact" rows="4"></textarea>
+                </div>
+            </div>
+
+            <hr class="sysHR" />
+
+            <!-- Generation Parameters -->
+            <div class="inline-drawer">
+                <div class="inline-drawer-toggle inline-drawer-header">
+                    <b>Generation Parameters</b>
+                    <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+                </div>
+                <div class="inline-drawer-content">
+                    <label for="bimg_model">Model</label>
+                    <select id="bimg_model" class="text_pole">
+                        <option value="">-- Connect to load models --</option>
+                    </select>
+                    <label for="bimg_sampler">Sampler</label>
+                    <select id="bimg_sampler" class="text_pole">
+                        <option value="">-- Connect to load samplers --</option>
+                    </select>
+                    <label for="bimg_scheduler">Scheduler</label>
+                    <select id="bimg_scheduler" class="text_pole">
+                        <option value="">-- Connect to load schedulers --</option>
+                    </select>
+                    <div class="flex-container">
+                        <div class="flex1">
+                            <label for="bimg_width">Width</label>
+                            <input id="bimg_width" type="number" class="text_pole" min="64" max="2048" step="64" />
+                        </div>
+                        <div class="flex1">
+                            <label for="bimg_height">Height</label>
+                            <input id="bimg_height" type="number" class="text_pole" min="64" max="2048" step="64" />
+                        </div>
+                    </div>
+                    <div class="flex-container">
+                        <div class="flex1">
+                            <label for="bimg_steps">Steps</label>
+                            <input id="bimg_steps" type="number" class="text_pole" min="1" max="150" step="1" />
+                        </div>
+                        <div class="flex1">
+                            <label for="bimg_cfg">CFG Scale</label>
+                            <input id="bimg_cfg" type="number" class="text_pole" min="1" max="30" step="0.5" />
+                        </div>
+                    </div>
+                    <label for="bimg_seed">Seed (-1 for random)</label>
+                    <input id="bimg_seed" type="number" class="text_pole" min="-1" />
+                </div>
+            </div>
+
+            <hr class="sysHR" />
+        </div>
+    </div>
+</div>

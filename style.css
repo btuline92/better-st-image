@@ -1,0 +1,39 @@
+#bimg_dropdown {
+    position: absolute;
+    z-index: 9999;
+    background: var(--SmartThemeBlurTintColor);
+    border: 1px solid var(--SmartThemeBorderColor);
+    border-radius: 5px;
+    padding: 5px;
+    min-width: 150px;
+}
+
+#bimg_dropdown .list-group-item {
+    cursor: pointer;
+    padding: 5px 10px;
+    border-radius: 3px;
+}
+
+#bimg_dropdown .list-group-item:hover {
+    background: var(--SmartThemeQuoteColor);
+}
+
+#bimg_dropdown span {
+    font-size: 0.85em;
+    padding: 2px 10px;
+    opacity: 0.7;
+}
+
+#bimg_gen.bimg_busy .fa-image::before {
+    content: "\f254";
+}
+
+.better-image-settings .textarea_compact {
+    min-height: 40px;
+}
+
+.better-image-settings small {
+    display: block;
+    margin-bottom: 4px;
+    opacity: 0.7;
+}
