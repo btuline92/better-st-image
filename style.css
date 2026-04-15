@@ -1,7 +1,7 @@
 #bimg_dropdown {
-    position: absolute;
-    z-index: 9999;
+    z-index: 30000;
     background: var(--SmartThemeBlurTintColor);
+    backdrop-filter: blur(var(--SmartThemeBlurStrength));
     border: 1px solid var(--SmartThemeBorderColor);
     border-radius: 5px;
     padding: 5px;

@@ -39,33 +39,38 @@ const generationModes = {
     FREE: "free",
 };
 
-const defaultSystemPrompt = [
-    "You are an image prompt generator. Given a description of a scene or character,",
-    "produce a detailed comma-delimited list of keywords and phrases suitable for",
-    "Stable Diffusion image generation. Focus on visual details only: appearance,",
-    "clothing, pose, setting, lighting, art style. Do not include non-visual qualities",
-    "like personality or emotions. Be concise and descriptive. Output ONLY the",
-    "comma-separated keywords, nothing else.",
-].join(" ");
+const defaultSystemPrompt = `You are a Stable Diffusion prompt generator. You output ONLY comma-separated Danbooru-style tags. NO sentences, NO commentary, NO explanations.
 
-const defaultPortraitPrompt = [
-    "Provide a detailed comma-delimited list of keywords describing {{char}}.",
-    "Include: name, species/race, gender, age, clothing, physical features, hair,",
-    "facial expression, pose. Prefix with 'full body portrait,'.",
-    "Do not include non-visual qualities. Output ONLY keywords.",
-].join(" ");
+Structure rules:
+1. Begin with tags describing the scene/background: location, time of day, lighting, atmosphere.
+2. Use the word BREAK to separate each character in the scene for multi-character composition.
+3. If a character has a comma-separated tag list provided for their appearance, use it exactly as-is without modification for visual consistency.
+4. After the character appearance tags, add tags for that character's pose, clothing state, and current action.
+5. Focus on: pose, clothing, literal action, physical interaction, and immediate background elements.
+6. NSFW logic: if the scene is sexual or erotic, begin the entire output with the tag "explicit,".
+7. End the output with a trailing comma.
+8. Max 40 tags total.
 
-const defaultScenePrompt = [
-    "Describe the current scene from the recent conversation.",
-    "Include: location, time of day, lighting, weather, characters present and their",
-    "appearance, what they are doing, surroundings, mood of the scene.",
-    "Output as a comma-delimited list of visual keywords only.",
-].join(" ");
+Example output for a two-character scene:
+tavern interior, night, candlelight, wooden table, BREAK, 1girl, blonde hair, blue eyes, elf ears, white dress, sitting, holding cup, smiling, BREAK, 1boy, black hair, armor, standing, leaning on table, looking at another,`;
 
-const defaultFreeformInstruction = [
-    "Expand the following description into a detailed comma-delimited list of",
-    "visual keywords suitable for Stable Diffusion image generation: {{input}}",
-].join(" ");
+const defaultPortraitPrompt = `Generate a portrait prompt for {{char}}.
+Output comma-separated Danbooru-style tags only.
+If a tag list is provided for this character's appearance, use it exactly as-is.
+Begin with "1girl," or "1boy," as appropriate, then appearance tags, then pose and expression.
+End with a trailing comma.`;
+
+const defaultScenePrompt = `Convert the current scene from the recent conversation into a Stable Diffusion prompt.
+Begin with background/location tags, then use BREAK to separate each character present.
+For each character, output their appearance tags (use provided tag lists as-is), followed by their current pose, clothing, and action.
+Extract the literal visual action from the last message. Focus on poses, clothing, and physical interaction.
+End with a trailing comma.`;
+
+const defaultFreeformInstruction = `Convert the following description into comma-separated Danbooru-style tags for Stable Diffusion.
+Begin with scene/background tags, use BREAK between characters if multiple are present.
+Use any provided character tag lists as-is. End with a trailing comma.
+
+Description: {{input}}`;
 
 const defaultPromptPrefix = "best quality, absurdres, aesthetic,";
 const defaultNegativePrompt = "lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry";
@@ -305,17 +310,31 @@ async function generateComfyImage(prompt, negativePrompt, signal) {
 
 function getCharacterBackground() {
     const context = getContext();
-    if (typeof this_chid === "undefined" || !context.characters[context.characterId]) {
-        return { name: "Character", description: "", personality: "", scenario: "" };
+    const result = {
+        charName: "Character",
+        charDescription: "",
+        charPersonality: "",
+        scenario: "",
+        userName: "",
+        userPersona: "",
+    };
+
+    if (typeof this_chid !== "undefined" && context.characters[context.characterId]) {
+        const char = context.characters[context.characterId];
+        result.charName = context.name2 || char.name || "Character";
+        result.charDescription = char.description || "";
+        result.charPersonality = char.personality || "";
+        result.scenario = char.scenario || "";
     }
 
-    const char = context.characters[context.characterId];
-    return {
-        name: context.name2 || char.name || "Character",
-        description: char.description || "",
-        personality: char.personality || "",
-        scenario: char.scenario || "",
-    };
+    // Get user persona
+    result.userName = context.name1 || "";
+    const fields = context.getCharacterCardFields?.();
+    if (fields?.persona) {
+        result.userPersona = fields.persona;
+    }
+
+    return result;
 }
 
 function getRecentChat(count = 5) {
@@ -354,10 +373,12 @@ async function generateImagePrompt(mode, userInput = "") {
     // Build the user prompt with character context
     const parts = [`Task: ${modeInstruction}`];
 
-    if (charBg.name) parts.push(`Character Name: ${charBg.name}`);
-    if (charBg.description) parts.push(`Character Description: ${charBg.description}`);
-    if (charBg.personality) parts.push(`Character Personality: ${charBg.personality}`);
+    if (charBg.charName) parts.push(`Character Name: ${charBg.charName}`);
+    if (charBg.charDescription) parts.push(`Character Description: ${charBg.charDescription}`);
+    if (charBg.charPersonality) parts.push(`Character Personality: ${charBg.charPersonality}`);
     if (charBg.scenario) parts.push(`Current Scenario: ${charBg.scenario}`);
+    if (charBg.userName) parts.push(`User Name: ${charBg.userName}`);
+    if (charBg.userPersona) parts.push(`User Persona: ${charBg.userPersona}`);
 
     if (recentChat) {
         parts.push(`\nRecent conversation:\n${recentChat}`);
@@ -626,8 +647,6 @@ function setupButtonHandlers() {
         if (target.is(dropdown) || target.closest(dropdown).length) return;
         if ((target.is(button) || target.closest(button).length) && !dropdown.is(":visible")) {
             e.preventDefault();
-            // Close the wand/extensions menu so dropdown appears on top
-            $("#extensionsMenu").hide();
             dropdown.fadeIn(animation_duration);
             popper.update();
         } else {
