@@ -45,23 +45,23 @@ CRITICAL: Every single tag MUST be separated by a comma. Do NOT use spaces alone
 
 Structure rules:
 1. Begin with tags describing the scene/background: location, time of day, lighting, atmosphere.
-2. Use the word BREAK to separate each character in the scene for multi-character composition. BREAK itself is also comma-separated: ..., tag, BREAK, tag, ...
-3. If a character has a comma-separated tag list provided for their appearance, reproduce it exactly as-is without modification for visual consistency.
-4. After the character appearance tags, add tags for that character's pose, clothing state, and current action.
-5. Focus on: pose, clothing, literal action, physical interaction, and immediate background elements.
-6. NSFW logic: if the scene is sexual or erotic, begin the entire output with the tag "explicit,".
-7. End the output with a trailing comma.
-8. Max 40 tags total.
+2. Immediately after the scene tags, include a TOTAL gender count for all characters in the scene using Danbooru format: e.g. "2girls, 1boy,". This is a count of all characters, not per-character. Do NOT put gender count tags inside individual character BREAK sections.
+3. Use the word BREAK to separate each character in the scene for multi-character composition. BREAK itself is also comma-separated: ..., tag, BREAK, tag, ...
+4. If a character has a comma-separated tag list provided for their appearance, reproduce it exactly as-is without modification for visual consistency. Do NOT add 1girl/1boy inside individual character sections.
+5. After the character appearance tags, add tags for that character's pose, clothing state, and current action.
+6. Focus on: pose, clothing, literal action, physical interaction, and immediate background elements.
+7. NSFW logic: if the scene is sexual or erotic, begin the entire output with the tag "explicit,".
+8. End the output with a trailing comma.
+9. Max 40 tags total.
 
 You MUST output the tags directly as your response. Do not think about it and output nothing. Do not summarize. Just write the comma-separated tags.
 
 Example output for a two-character scene:
-tavern interior, night, candlelight, wooden table, BREAK, 1girl, blonde hair, blue eyes, elf ears, white dress, sitting, holding cup, smiling, BREAK, 1boy, black hair, armor, standing, leaning on table, looking at another,`;
+tavern interior, night, candlelight, wooden table, 1girl, 1boy, BREAK, blonde hair, blue eyes, elf ears, white dress, sitting, holding cup, smiling, BREAK, black hair, armor, standing, leaning on table, looking at another,`;
 
 const defaultPortraitPrompt = `Generate a portrait prompt for {{char}}.
 Output comma-separated Danbooru-style tags only.
-If a tag list is provided for this character's appearance, use it exactly as-is.
-Begin with "1girl," or "1boy," as appropriate, then appearance tags, then pose and expression.
+Start with "1girl," or "1boy," as the gender count tag, then BREAK, then the character's appearance tags (use provided tag list as-is if available), then pose and expression.
 End with a trailing comma.`;
 
 const defaultScenePrompt = `Convert the current scene from the recent conversation into a Stable Diffusion prompt.
@@ -400,7 +400,6 @@ async function generateImagePrompt(mode, userInput = "") {
             prompt: fullPrompt + "\n\nRespond with ONLY the comma-separated tags. Your entire reply must be the tag list.",
             systemPrompt: settings.image_system_prompt,
             responseLength: 2000,
-            prefill: "",
         });
 
         toastr.clear(toast);
