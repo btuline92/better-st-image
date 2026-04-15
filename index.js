@@ -39,17 +39,19 @@ const generationModes = {
     FREE: "free",
 };
 
-const defaultSystemPrompt = `You are a Stable Diffusion prompt generator. You output ONLY comma-separated Danbooru-style tags. NO sentences, NO commentary, NO explanations.
+const defaultSystemPrompt = `You are a Stable Diffusion prompt generator. Your response must contain ONLY comma-separated Danbooru-style tags. Do not respond with anything other than the tag list. NO sentences, NO commentary, NO explanations, NO preamble. Your entire reply is the tag list and nothing else.
 
 Structure rules:
 1. Begin with tags describing the scene/background: location, time of day, lighting, atmosphere.
 2. Use the word BREAK to separate each character in the scene for multi-character composition.
-3. If a character has a comma-separated tag list provided for their appearance, use it exactly as-is without modification for visual consistency.
+3. If a character has a comma-separated tag list provided for their appearance, reproduce it exactly as-is without modification for visual consistency.
 4. After the character appearance tags, add tags for that character's pose, clothing state, and current action.
 5. Focus on: pose, clothing, literal action, physical interaction, and immediate background elements.
 6. NSFW logic: if the scene is sexual or erotic, begin the entire output with the tag "explicit,".
 7. End the output with a trailing comma.
 8. Max 40 tags total.
+
+You MUST output the tags directly as your response. Do not think about it and output nothing. Do not summarize. Just write the tags.
 
 Example output for a two-character scene:
 tavern interior, night, candlelight, wooden table, BREAK, 1girl, blonde hair, blue eyes, elf ears, white dress, sitting, holding cup, smiling, BREAK, 1boy, black hair, armor, standing, leaning on table, looking at another,`;
@@ -393,19 +395,23 @@ async function generateImagePrompt(mode, userInput = "") {
 
     try {
         const result = await generateRaw({
-            prompt: fullPrompt,
+            prompt: fullPrompt + "\n\nRespond with ONLY the comma-separated tags. Your entire reply must be the tag list.",
             systemPrompt: settings.image_system_prompt,
-            responseLength: 200,
+            responseLength: 2000,
+            prefill: "",
         });
 
         toastr.clear(toast);
 
         if (!result) {
-            throw new Error("LLM returned empty response");
+            throw new Error("LLM returned empty response. The model may be placing output in its reasoning block. Try disabling extended thinking or reasoning for this model.");
         }
 
-        // Clean up the response — strip quotes, trim whitespace
-        const cleaned = result.replace(/^["']|["']$/g, "").trim();
+        // Clean up the response — strip non-tag content
+        let cleaned = result
+            .replace(/^["']|["']$/g, "")  // strip wrapping quotes
+            .replace(/^(Here|Tags|Output|The tags)[^:]*:\s*/i, "")  // strip preamble like "Here are the tags:"
+            .trim();
         console.log("[BetterImage] LLM result:", cleaned);
         return cleaned;
     } catch (err) {
