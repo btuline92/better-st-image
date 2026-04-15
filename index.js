@@ -25,6 +25,8 @@ import {
     SlashCommandNamedArgument,
 } from "../../../slash-commands/SlashCommandArgument.js";
 import { callGenericPopup, POPUP_TYPE } from "../../../popup.js";
+import { Popper } from "../../../../lib.js";
+import { animation_duration } from "../../../../script.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
@@ -82,10 +84,10 @@ const defaultSettings = {
     model: "",
     sampler: "",
     scheduler: "",
-    width: 512,
-    height: 512,
-    steps: 20,
-    cfg: 7,
+    width: 1024,
+    height: 1024,
+    steps: 30,
+    cfg: 5,
     seed: -1,
 };
 
@@ -611,51 +613,43 @@ function setupSettingsHandlers() {
 function setupButtonHandlers() {
     const button = $("#bimg_gen");
     const dropdown = $("#bimg_dropdown");
+    dropdown.hide();
 
-    // Toggle dropdown on button click
-    button.on("click", function (e) {
-        e.stopPropagation();
+    // Use Popper.js for positioning (same pattern as built-in SD extension)
+    const popper = Popper.createPopper(button.get(0), dropdown.get(0), {
+        placement: "top",
+    });
 
-        if (dropdown.is(":visible")) {
-            dropdown.hide();
-            return;
+    // Toggle dropdown on click — uses document-level handler like built-in SD
+    $(document).on("click touchend", function (e) {
+        const target = $(e.target);
+        if (target.is(dropdown) || target.closest(dropdown).length) return;
+        if ((target.is(button) || target.closest(button).length) && !dropdown.is(":visible")) {
+            e.preventDefault();
+            // Close the wand/extensions menu so dropdown appears on top
+            $("#extensionsMenu").hide();
+            dropdown.fadeIn(animation_duration);
+            popper.update();
+        } else {
+            dropdown.fadeOut(animation_duration);
         }
-
-        // Position dropdown near the button
-        const rect = button[0].getBoundingClientRect();
-        dropdown.css({
-            top: rect.top - dropdown.outerHeight() - 5,
-            left: rect.left,
-        });
-        dropdown.show();
     });
 
     // Dropdown item clicks
-    $("#bimg_portrait").on("click", function () {
-        dropdown.hide();
-        generatePicture(generationModes.PORTRAIT);
-    });
-
-    $("#bimg_scene").on("click", function () {
-        dropdown.hide();
-        generatePicture(generationModes.SCENE);
-    });
-
-    $("#bimg_free").on("click", async function () {
-        dropdown.hide();
-        const input = await callGenericPopup("Enter image description:", POPUP_TYPE.INPUT);
-        if (input) {
-            generatePicture(generationModes.FREE, String(input));
+    $("#bimg_dropdown [id]").on("click", function () {
+        dropdown.fadeOut(animation_duration);
+        const mode = $(this).data("value");
+        if (mode === "portrait") {
+            generatePicture(generationModes.PORTRAIT);
+        } else if (mode === "scene") {
+            generatePicture(generationModes.SCENE);
+        } else if (mode === "free") {
+            callGenericPopup("Enter image description:", POPUP_TYPE.INPUT).then((input) => {
+                if (input) {
+                    generatePicture(generationModes.FREE, String(input));
+                }
+            });
         }
-    });
-
-    // Close dropdown when clicking elsewhere
-    $(document).on("click", function () {
-        dropdown.hide();
-    });
-
-    dropdown.on("click", function (e) {
-        e.stopPropagation();
     });
 }
 
