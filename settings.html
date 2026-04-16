@@ -40,6 +40,17 @@
                     <label for="bimg_system_prompt">System Prompt for Image Generation</label>
                     <small>This replaces the full chat preset when generating image prompts via the LLM.</small>
                     <textarea id="bimg_system_prompt" class="text_pole textarea_compact" rows="6" placeholder="Instructions for the LLM when generating image prompts..."></textarea>
+
+                    <hr class="sysHR" />
+
+                    <label class="checkbox_label" for="bimg_temp_override_enabled" title="Override the LLM temperature when generating image prompts. Lower values produce more deterministic, consistent output.">
+                        <input id="bimg_temp_override_enabled" type="checkbox" />
+                        <span>Override LLM temperature for image prompts</span>
+                    </label>
+                    <div id="bimg_temp_override_controls" class="flex-container flexnowrap" style="align-items: center; gap: 10px;">
+                        <input id="bimg_temp_override_slider" type="range" min="0" max="2" step="0.05" style="flex: 1;" />
+                        <span id="bimg_temp_override_display" style="min-width: 35px; text-align: center;">0.30</span>
+                    </div>
                 </div>
             </div>
 

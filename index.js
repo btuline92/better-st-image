@@ -26,7 +26,9 @@ import {
 } from "../../../slash-commands/SlashCommandArgument.js";
 import { callGenericPopup, POPUP_TYPE } from "../../../popup.js";
 import { Popper } from "../../../../lib.js";
-import { animation_duration } from "../../../../script.js";
+import { animation_duration, main_api } from "../../../../script.js";
+import { oai_settings } from "../../../openai.js";
+import { textgenerationwebui_settings } from "../../../textgen-settings.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
 
@@ -98,6 +100,8 @@ const defaultSettings = {
     steps: 30,
     cfg: 5,
     seed: -1,
+    temp_override_enabled: false,
+    temp_override_value: 0.30,
 };
 
 // ─── Settings Management ────────────────────────────────────────────────────────
@@ -132,6 +136,12 @@ function loadSettings() {
     $("#bimg_steps").val(settings.steps);
     $("#bimg_cfg").val(settings.cfg);
     $("#bimg_seed").val(settings.seed);
+
+    // Temperature override
+    $("#bimg_temp_override_enabled").prop("checked", settings.temp_override_enabled);
+    $("#bimg_temp_override_slider").val(settings.temp_override_value);
+    $("#bimg_temp_override_display").text(settings.temp_override_value.toFixed(2));
+    $("#bimg_temp_override_controls").toggle(settings.temp_override_enabled);
 
     loadCharacterPrompts();
 }
@@ -395,6 +405,20 @@ async function generateImagePrompt(mode, userInput = "") {
 
     const toast = toastr.info("Generating image prompt...", "Better Image");
 
+    // Temporarily override temperature if enabled
+    let savedTemp = null;
+    if (settings.temp_override_enabled) {
+        const overrideTemp = settings.temp_override_value;
+        if (main_api === "openai") {
+            savedTemp = { api: "openai", value: oai_settings.temp_openai };
+            oai_settings.temp_openai = overrideTemp;
+        } else {
+            savedTemp = { api: "textgen", value: textgenerationwebui_settings.temp };
+            textgenerationwebui_settings.temp = overrideTemp;
+        }
+        console.log(`[BetterImage] Temperature override: ${overrideTemp}`);
+    }
+
     try {
         const result = await generateRaw({
             prompt: fullPrompt + "\n\nRespond with ONLY the comma-separated tags. Your entire reply must be the tag list.",
@@ -418,6 +442,15 @@ async function generateImagePrompt(mode, userInput = "") {
     } catch (err) {
         toastr.clear(toast);
         throw err;
+    } finally {
+        // Always restore original temperature
+        if (savedTemp) {
+            if (savedTemp.api === "openai") {
+                oai_settings.temp_openai = savedTemp.value;
+            } else {
+                textgenerationwebui_settings.temp = savedTemp.value;
+            }
+        }
     }
 }
 
@@ -634,6 +667,21 @@ function setupSettingsHandlers() {
 
     $("#bimg_seed").on("input", function () {
         getSettings().seed = Number($(this).val());
+        saveSettingsDebounced();
+    });
+
+    // Temperature override
+    $("#bimg_temp_override_enabled").on("change", function () {
+        const enabled = Boolean($(this).prop("checked"));
+        getSettings().temp_override_enabled = enabled;
+        $("#bimg_temp_override_controls").toggle(enabled);
+        saveSettingsDebounced();
+    });
+
+    $("#bimg_temp_override_slider").on("input", function () {
+        const value = Number($(this).val());
+        getSettings().temp_override_value = value;
+        $("#bimg_temp_override_display").text(value.toFixed(2));
         saveSettingsDebounced();
     });
 }
