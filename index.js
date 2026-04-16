@@ -423,7 +423,7 @@ async function generateImagePrompt(mode, userInput = "") {
         const result = await generateRaw({
             prompt: fullPrompt + "\n\nRespond with ONLY the comma-separated tags. Your entire reply must be the tag list.",
             systemPrompt: settings.image_system_prompt,
-            responseLength: 2000,
+            responseLength: 5000,
         });
 
         toastr.clear(toast);
