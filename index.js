@@ -27,7 +27,7 @@ import {
 import { callGenericPopup, POPUP_TYPE } from "../../../popup.js";
 import { Popper } from "../../../../lib.js";
 import { animation_duration, main_api } from "../../../../script.js";
-import { oai_settings } from "../../../openai.js";
+import { oai_settings, chat_completion_sources } from "../../../openai.js";
 import { textgenerationwebui_settings } from "../../../textgen-settings.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
@@ -102,6 +102,8 @@ const defaultSettings = {
     seed: -1,
     temp_override_enabled: false,
     temp_override_value: 0.30,
+    model_override_enabled: false,
+    model_override_name: "",
 };
 
 // ─── Settings Management ────────────────────────────────────────────────────────
@@ -142,6 +144,11 @@ function loadSettings() {
     $("#bimg_temp_override_slider").val(settings.temp_override_value);
     $("#bimg_temp_override_display").text(settings.temp_override_value.toFixed(2));
     $("#bimg_temp_override_controls").toggle(settings.temp_override_enabled);
+
+    // Model override
+    $("#bimg_model_override_enabled").prop("checked", settings.model_override_enabled);
+    $("#bimg_model_override_name").val(settings.model_override_name);
+    $("#bimg_model_override_controls").toggle(settings.model_override_enabled);
 
     loadCharacterPrompts();
 }
@@ -419,6 +426,23 @@ async function generateImagePrompt(mode, userInput = "") {
         console.log(`[BetterImage] Temperature override: ${overrideTemp}`);
     }
 
+    // Temporarily override model if enabled (OpenRouter/NanoGPT only)
+    let savedModel = null;
+    if (settings.model_override_enabled && settings.model_override_name) {
+        const source = oai_settings.chat_completion_source;
+        if (source === chat_completion_sources.OPENROUTER) {
+            savedModel = { key: "openrouter_model", value: oai_settings.openrouter_model };
+            oai_settings.openrouter_model = settings.model_override_name;
+            console.log(`[BetterImage] Model override (OpenRouter): ${settings.model_override_name}`);
+        } else if (source === chat_completion_sources.NANOGPT) {
+            savedModel = { key: "nanogpt_model", value: oai_settings.nanogpt_model };
+            oai_settings.nanogpt_model = settings.model_override_name;
+            console.log(`[BetterImage] Model override (NanoGPT): ${settings.model_override_name}`);
+        } else {
+            console.log(`[BetterImage] Model override skipped — only supported for OpenRouter and NanoGPT (current: ${source})`);
+        }
+    }
+
     try {
         const result = await generateRaw({
             prompt: fullPrompt + "\n\nRespond with ONLY the comma-separated tags. Your entire reply must be the tag list.",
@@ -450,6 +474,10 @@ async function generateImagePrompt(mode, userInput = "") {
             } else {
                 textgenerationwebui_settings.temp = savedTemp.value;
             }
+        }
+        // Always restore original model
+        if (savedModel) {
+            oai_settings[savedModel.key] = savedModel.value;
         }
     }
 }
@@ -682,6 +710,19 @@ function setupSettingsHandlers() {
         const value = Number($(this).val());
         getSettings().temp_override_value = value;
         $("#bimg_temp_override_display").text(value.toFixed(2));
+        saveSettingsDebounced();
+    });
+
+    // Model override
+    $("#bimg_model_override_enabled").on("change", function () {
+        const enabled = Boolean($(this).prop("checked"));
+        getSettings().model_override_enabled = enabled;
+        $("#bimg_model_override_controls").toggle(enabled);
+        saveSettingsDebounced();
+    });
+
+    $("#bimg_model_override_name").on("input", function () {
+        getSettings().model_override_name = String($(this).val());
         saveSettingsDebounced();
     });
 }
