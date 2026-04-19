@@ -37,7 +37,8 @@ const extensionFolderPath = `scripts/extensions/third-party/${extensionName}`;
 
 const generationModes = {
     PORTRAIT: "portrait",
-    SCENE: "scene",
+    SCENE_MULTI: "scene_multi",
+    SCENE_SINGLE: "scene_single",
     FREE: "free",
 };
 
@@ -66,11 +67,24 @@ Output comma-separated Danbooru-style tags only.
 Start with "1girl," or "1boy," as the gender count tag, then BREAK, then the character's appearance tags (use provided tag list as-is if available), then pose and expression.
 End with a trailing comma.`;
 
-const defaultScenePrompt = `Convert the current scene from the recent conversation into a Stable Diffusion prompt.
+const defaultSceneMultiPrompt = `Convert the current scene from the recent conversation into a Stable Diffusion prompt.
 Begin with background/location tags, then use BREAK to separate each character present.
 For each character, output their appearance tags (use provided tag lists as-is), followed by their current pose, clothing, and action.
 Extract the literal visual action from the last message. Focus on poses, clothing, and physical interaction.
 End with a trailing comma.`;
+
+const defaultSceneSinglePrompt = `CRITICAL: Ignore any instruction in the system prompt about BREAK tags or multi-character composition. This is a single-character scene. Output a flat comma-separated tag list with NO BREAK tags.
+
+Generate a Stable Diffusion prompt for the current scene with exactly one character.
+
+Rules:
+1. Output comma-separated Danbooru-style tags only.
+2. DO NOT include physical character traits (hair color, eye color, species, body features, face shape, etc.). Those are supplied separately by the character appearance prefix.
+3. Include background/location tags for the scene (setting, lighting, atmosphere).
+4. Include a single gender count tag: 1girl or 1boy.
+5. Describe the character's current pose, clothing state, literal action from the last message, facial expression, and interaction with the environment.
+6. Max 15 tags total.
+7. End with a trailing comma.`;
 
 const defaultFreeformInstruction = `Convert the following description into comma-separated Danbooru-style tags for Stable Diffusion.
 Begin with scene/background tags, use BREAK between characters if multiple are present.
@@ -90,7 +104,8 @@ const defaultSettings = {
     character_prompts: {},
     character_negatives: {},
     portrait_prompt: defaultPortraitPrompt,
-    scene_prompt: defaultScenePrompt,
+    scene_multi_prompt: defaultSceneMultiPrompt,
+    scene_single_prompt: defaultSceneSinglePrompt,
     freeform_instruction: defaultFreeformInstruction,
     model: "",
     sampler: "",
@@ -116,6 +131,13 @@ function loadSettings() {
     extension_settings[extensionName] = extension_settings[extensionName] || {};
     const settings = extension_settings[extensionName];
 
+    // Migrate legacy scene_prompt → scene_multi_prompt
+    if (settings.scene_prompt !== undefined && settings.scene_multi_prompt === undefined) {
+        settings.scene_multi_prompt = settings.scene_prompt;
+        delete settings.scene_prompt;
+        saveSettingsDebounced();
+    }
+
     // Fill missing keys with defaults
     for (const [key, value] of Object.entries(defaultSettings)) {
         if (settings[key] === undefined) {
@@ -131,7 +153,8 @@ function loadSettings() {
     $("#bimg_prompt_prefix").val(settings.prompt_prefix);
     $("#bimg_negative_prompt").val(settings.negative_prompt);
     $("#bimg_portrait_prompt").val(settings.portrait_prompt);
-    $("#bimg_scene_prompt").val(settings.scene_prompt);
+    $("#bimg_scene_multi_prompt").val(settings.scene_multi_prompt);
+    $("#bimg_scene_single_prompt").val(settings.scene_single_prompt);
     $("#bimg_freeform_instruction").val(settings.freeform_instruction);
     $("#bimg_width").val(settings.width);
     $("#bimg_height").val(settings.height);
@@ -380,8 +403,11 @@ async function generateImagePrompt(mode, userInput = "") {
         case generationModes.PORTRAIT:
             modeInstruction = substituteParams(settings.portrait_prompt);
             break;
-        case generationModes.SCENE:
-            modeInstruction = substituteParams(settings.scene_prompt);
+        case generationModes.SCENE_MULTI:
+            modeInstruction = substituteParams(settings.scene_multi_prompt);
+            break;
+        case generationModes.SCENE_SINGLE:
+            modeInstruction = substituteParams(settings.scene_single_prompt);
             break;
         case generationModes.FREE:
             modeInstruction = settings.freeform_instruction.replace("{{input}}", userInput);
@@ -510,7 +536,7 @@ async function generatePicture(mode, userInput = "", quiet = false) {
 
         // Step 2: Combine with prefixes
         const globalPrefix = settings.prompt_prefix || "";
-        const charPrefix = getCharacterPrefix();
+        const charPrefix = mode === generationModes.SCENE_MULTI ? "" : getCharacterPrefix();
         const fullPrompt = combinePrefixes(combinePrefixes(globalPrefix, charPrefix), prompt);
 
         const globalNegative = settings.negative_prompt || "";
@@ -647,8 +673,13 @@ function setupSettingsHandlers() {
         saveSettingsDebounced();
     });
 
-    $("#bimg_scene_prompt").on("input", function () {
-        getSettings().scene_prompt = String($(this).val());
+    $("#bimg_scene_multi_prompt").on("input", function () {
+        getSettings().scene_multi_prompt = String($(this).val());
+        saveSettingsDebounced();
+    });
+
+    $("#bimg_scene_single_prompt").on("input", function () {
+        getSettings().scene_single_prompt = String($(this).val());
         saveSettingsDebounced();
     });
 
@@ -756,8 +787,10 @@ function setupButtonHandlers() {
         const mode = $(this).data("value");
         if (mode === "portrait") {
             generatePicture(generationModes.PORTRAIT);
-        } else if (mode === "scene") {
-            generatePicture(generationModes.SCENE);
+        } else if (mode === "scene_multi") {
+            generatePicture(generationModes.SCENE_MULTI);
+        } else if (mode === "scene_single") {
+            generatePicture(generationModes.SCENE_SINGLE);
         } else if (mode === "free") {
             callGenericPopup("Enter image description:", POPUP_TYPE.INPUT).then((input) => {
                 if (input) {
@@ -780,16 +813,18 @@ function registerSlashCommands() {
 
             if (trimmed === "portrait") {
                 await generatePicture(generationModes.PORTRAIT, "", quiet);
-            } else if (trimmed === "scene") {
-                await generatePicture(generationModes.SCENE, "", quiet);
+            } else if (trimmed === "scene" || trimmed === "scene-multi" || trimmed === "multi") {
+                await generatePicture(generationModes.SCENE_MULTI, "", quiet);
+            } else if (trimmed === "scene-single" || trimmed === "single") {
+                await generatePicture(generationModes.SCENE_SINGLE, "", quiet);
             } else if (trimmed) {
                 await generatePicture(generationModes.FREE, text.trim(), quiet);
             } else {
-                toastr.warning("Usage: /bimg portrait | scene | [free text]", "Better Image");
+                toastr.warning("Usage: /bimg portrait | scene-multi | scene-single | [free text]", "Better Image");
             }
             return "";
         },
-        helpString: "<div>Generate an image using Better Image Generation.<br>/bimg portrait - Character portrait<br>/bimg scene - Current scene<br>/bimg [text] - Free-form image</div>",
+        helpString: "<div>Generate an image using Better Image Generation.<br>/bimg portrait - Character portrait<br>/bimg scene-multi (or scene) - Current scene, multi-character<br>/bimg scene-single (or single) - Current scene, single character<br>/bimg [text] - Free-form image</div>",
         returns: "image path",
         unnamedArgumentList: [
             new SlashCommandArgument("mode or prompt", [ARGUMENT_TYPE.STRING], false),

@@ -97,9 +97,12 @@
                     <label for="bimg_portrait_prompt">Portrait Prompt</label>
                     <small>LLM instruction template for character portraits. Use {{char}} and {{user}} macros.</small>
                     <textarea id="bimg_portrait_prompt" class="text_pole textarea_compact" rows="4"></textarea>
-                    <label for="bimg_scene_prompt">Scene Prompt</label>
-                    <small>LLM instruction template for current scene descriptions.</small>
-                    <textarea id="bimg_scene_prompt" class="text_pole textarea_compact" rows="4"></textarea>
+                    <label for="bimg_scene_multi_prompt">Scene Prompt (Multi Character)</label>
+                    <small>LLM instruction template for multi-character scene composition. Character appearance prefix is NOT appended.</small>
+                    <textarea id="bimg_scene_multi_prompt" class="text_pole textarea_compact" rows="4"></textarea>
+                    <label for="bimg_scene_single_prompt">Scene Prompt (Single Character)</label>
+                    <small>LLM instruction template for single-character scenes. Character appearance prefix IS appended.</small>
+                    <textarea id="bimg_scene_single_prompt" class="text_pole textarea_compact" rows="4"></textarea>
                     <label for="bimg_freeform_instruction">Free-form Instruction</label>
                     <small>LLM instruction prepended to free-form input. Use {{input}} for the user's text.</small>
                     <textarea id="bimg_freeform_instruction" class="text_pole textarea_compact" rows="4"></textarea>
