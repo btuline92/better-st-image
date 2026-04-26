@@ -44,13 +44,13 @@ const generationModes = {
 
 const defaultSystemPrompt = `You are a Stable Diffusion prompt generator. Your response must contain ONLY comma-separated Danbooru-style tags. Do not respond with anything other than the tag list. NO sentences, NO commentary, NO explanations, NO preamble. Your entire reply is the tag list and nothing else.
 
-CRITICAL: Every single tag MUST be separated by a comma. Do NOT use spaces alone, newlines, or any other separator between tags. The output is a single line of comma-separated tags. Example format: tag1, tag2, tag3, tag4,
+CRITICAL: Every single tag MUST be separated by a comma. Tags MUST be kept short at 2-3 tokens maximum length. Do NOT use spaces alone, newlines, or any other separator between tags. The output is a single line of comma-separated tags. Example format: tag1, tag2, tag3, tag4,
 
 Structure rules:
 1. Begin with tags describing the scene/background: location, time of day, lighting, atmosphere.
 2. Immediately after the scene tags, include a TOTAL gender count for all characters in the scene using Danbooru format: e.g. "2girls, 1boy,". This is a count of all characters, not per-character. Do NOT put gender count tags inside individual character BREAK sections.
 3. Use the word BREAK to separate each character in the scene for multi-character composition. BREAK itself is also comma-separated: ..., tag, BREAK, tag, ...
-4. If a character has a comma-separated tag list provided for their appearance, reproduce it exactly as-is without modification for visual consistency. Do NOT add 1girl/1boy inside individual character sections.
+4. If a character has a comma-separated tag list provided for their appearance, reproduce it exactly as-is without modification for visual consistency. Do NOT add 1girl/1boy inside individual character sections. DO specify gender with male/female
 5. After the character appearance tags, add tags for that character's pose, clothing state, and current action.
 6. Focus on: pose, clothing, literal action, physical interaction, and immediate background elements.
 7. NSFW logic: if the scene is sexual or erotic, begin the entire output with the tag "explicit,".
@@ -69,9 +69,12 @@ End with a trailing comma.`;
 
 const defaultSceneMultiPrompt = `Convert the current scene from the recent conversation into a Stable Diffusion prompt.
 Begin with background/location tags, then use BREAK to separate each character present.
-For each character, output their appearance tags (use provided tag lists as-is), followed by their current pose, clothing, and action.
+For each character, output their appearance tags (use provided tag lists as-is), followed by their current pose, clothing, and action. Keep total tags short
 Extract the literal visual action from the last message. Focus on poses, clothing, and physical interaction.
-End with a trailing comma.`;
+End with a trailing comma.
+
+CRITICAL:
+Keep the tag list for each character short, 10 tags max`;
 
 const defaultSceneSinglePrompt = `CRITICAL: Ignore any instruction in the system prompt about BREAK tags or multi-character composition. This is a single-character scene. Output a flat comma-separated tag list with NO BREAK tags.
 
@@ -464,8 +467,12 @@ async function generateImagePrompt(mode, userInput = "") {
             savedModel = { key: "nanogpt_model", value: oai_settings.nanogpt_model };
             oai_settings.nanogpt_model = settings.model_override_name;
             console.log(`[BetterImage] Model override (NanoGPT): ${settings.model_override_name}`);
+        } else if (source === chat_completion_sources.DEEPSEEK) {
+            savedModel = { key: "deepseek_model", value: oai_settings.deepseek_model };
+            oai_settings.deepseek_model = settings.model_override_name;
+            console.log(`[BetterImage] Model override (DeepSeek): ${settings.model_override_name}`);
         } else {
-            console.log(`[BetterImage] Model override skipped — only supported for OpenRouter and NanoGPT (current: ${source})`);
+            console.log(`[BetterImage] Model override skipped — only supported for OpenRouter, NanoGPT, and DeepSeek (current: ${source})`);
         }
     }
 
