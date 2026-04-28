@@ -54,13 +54,13 @@
 
                     <hr class="sysHR" />
 
-                    <label class="checkbox_label" for="bimg_model_override_enabled" title="Use a different model for image prompt generation. Only works with OpenRouter, NanoGPT, and DeepSeek.">
+                    <label class="checkbox_label" for="bimg_model_override_enabled" title="Use a different model for image prompt generation. Works with any chat completion provider.">
                         <input id="bimg_model_override_enabled" type="checkbox" />
-                        <span>Override model for image prompts (OpenRouter/NanoGPT/DeepSeek)</span>
+                        <span>Override model for image prompts</span>
                     </label>
                     <div id="bimg_model_override_controls">
-                        <small>Enter the model ID (e.g. google/gemma-3-4b-it, deepseek-chat). Only applies when using OpenRouter, NanoGPT, or DeepSeek.</small>
-                        <input id="bimg_model_override_name" type="text" class="text_pole" placeholder="e.g. google/gemma-3-4b-it" />
+                        <small>Enter the model ID for your provider (e.g. google/gemma-3-4b-it for OpenRouter, deepseek-v4-flash for DeepSeek). Applies to any chat completion provider.</small>
+                        <input id="bimg_model_override_name" type="text" class="text_pole" placeholder="e.g. deepseek-v4-flash" />
                     </div>
                 </div>
             </div>

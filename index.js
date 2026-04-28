@@ -27,7 +27,7 @@ import {
 import { callGenericPopup, POPUP_TYPE } from "../../../popup.js";
 import { Popper } from "../../../../lib.js";
 import { animation_duration, main_api } from "../../../../script.js";
-import { oai_settings, chat_completion_sources } from "../../../openai.js";
+import { oai_settings } from "../../../openai.js";
 import { textgenerationwebui_settings } from "../../../textgen-settings.js";
 
 // ─── Constants ──────────────────────────────────────────────────────────────────
@@ -455,24 +455,22 @@ async function generateImagePrompt(mode, userInput = "") {
         console.log(`[BetterImage] Temperature override: ${overrideTemp}`);
     }
 
-    // Temporarily override model if enabled (OpenRouter/NanoGPT only)
-    let savedModel = null;
+    // Temporarily override model if enabled (chat completion only)
+    // Hook the request just before it fires and rewrite generate_data.model.
+    // This is source-agnostic: it works for any chat completion provider.
+    let modelOverrideHook = null;
     if (settings.model_override_enabled && settings.model_override_name) {
-        const source = oai_settings.chat_completion_source;
-        if (source === chat_completion_sources.OPENROUTER) {
-            savedModel = { key: "openrouter_model", value: oai_settings.openrouter_model };
-            oai_settings.openrouter_model = settings.model_override_name;
-            console.log(`[BetterImage] Model override (OpenRouter): ${settings.model_override_name}`);
-        } else if (source === chat_completion_sources.NANOGPT) {
-            savedModel = { key: "nanogpt_model", value: oai_settings.nanogpt_model };
-            oai_settings.nanogpt_model = settings.model_override_name;
-            console.log(`[BetterImage] Model override (NanoGPT): ${settings.model_override_name}`);
-        } else if (source === chat_completion_sources.DEEPSEEK) {
-            savedModel = { key: "deepseek_model", value: oai_settings.deepseek_model };
-            oai_settings.deepseek_model = settings.model_override_name;
-            console.log(`[BetterImage] Model override (DeepSeek): ${settings.model_override_name}`);
+        if (main_api === "openai") {
+            const overrideName = settings.model_override_name;
+            modelOverrideHook = (data) => {
+                if (data && typeof data === "object") {
+                    console.log(`[BetterImage] Model override: ${data.model} → ${overrideName} (source: ${data.chat_completion_source})`);
+                    data.model = overrideName;
+                }
+            };
+            eventSource.once(event_types.CHAT_COMPLETION_SETTINGS_READY, modelOverrideHook);
         } else {
-            console.log(`[BetterImage] Model override skipped — only supported for OpenRouter, NanoGPT, and DeepSeek (current: ${source})`);
+            console.log(`[BetterImage] Model override skipped — chat completion only (current api: ${main_api})`);
         }
     }
 
@@ -508,9 +506,9 @@ async function generateImagePrompt(mode, userInput = "") {
                 textgenerationwebui_settings.temp = savedTemp.value;
             }
         }
-        // Always restore original model
-        if (savedModel) {
-            oai_settings[savedModel.key] = savedModel.value;
+        // Remove the model override hook in case it never fired (e.g. error before request)
+        if (modelOverrideHook) {
+            eventSource.removeListener(event_types.CHAT_COMPLETION_SETTINGS_READY, modelOverrideHook);
         }
     }
 }
