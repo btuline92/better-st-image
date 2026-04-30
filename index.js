@@ -56,6 +56,7 @@ Structure rules:
 7. NSFW logic: if the scene is sexual or erotic, begin the entire output with the tag "explicit,".
 8. End the output with a trailing comma.
 9. Max 40 tags total.
+10. IMPORTANT: During sex scenes, add tags describing the characters penis and vagina. E.g. penis_in_vagina, pussy_visible, penis_in_mouth. 
 
 You MUST output the tags directly as your response. Do not think about it and output nothing. Do not summarize. Just write the comma-separated tags.
 
