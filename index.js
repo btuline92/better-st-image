@@ -99,6 +99,27 @@ Description: {{input}}`;
 const defaultPromptPrefix = "best quality, absurdres, aesthetic,";
 const defaultNegativePrompt = "lowres, bad anatomy, bad hands, text, error, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry";
 
+// Fields bundled inside a preset. Switching the active preset replaces these in oai_settings + UI.
+const PRESET_FIELDS = [
+    "image_system_prompt",
+    "portrait_prompt",
+    "scene_multi_prompt",
+    "scene_single_prompt",
+    "freeform_instruction",
+    "prompt_prefix",
+    "negative_prompt",
+];
+
+const PRESET_FIELD_TO_INPUT = {
+    image_system_prompt: "#bimg_system_prompt",
+    portrait_prompt: "#bimg_portrait_prompt",
+    scene_multi_prompt: "#bimg_scene_multi_prompt",
+    scene_single_prompt: "#bimg_scene_single_prompt",
+    freeform_instruction: "#bimg_freeform_instruction",
+    prompt_prefix: "#bimg_prompt_prefix",
+    negative_prompt: "#bimg_negative_prompt",
+};
+
 const defaultSettings = {
     comfy_url: "http://127.0.0.1:8188",
     comfy_workflow: "",
@@ -123,6 +144,8 @@ const defaultSettings = {
     temp_override_value: 0.30,
     model_override_enabled: false,
     model_override_name: "",
+    presets: {},
+    active_preset: "Default",
 };
 
 // ─── Settings Management ────────────────────────────────────────────────────────
@@ -148,6 +171,22 @@ function loadSettings() {
             settings[key] = typeof value === "object" && !Array.isArray(value)
                 ? { ...value }
                 : value;
+        }
+    }
+
+    // Migrate to preset structure: if no presets exist, seed "Default" from current top-level fields
+    if (!settings.presets || Object.keys(settings.presets).length === 0) {
+        settings.presets = {
+            "Default": snapshotPresetFromSettings(settings),
+        };
+        settings.active_preset = "Default";
+        saveSettingsDebounced();
+    }
+    // Ensure active_preset points at an existing preset
+    if (!settings.presets[settings.active_preset]) {
+        settings.active_preset = Object.keys(settings.presets)[0] || "Default";
+        if (!settings.presets[settings.active_preset]) {
+            settings.presets[settings.active_preset] = snapshotPresetFromSettings(settings);
         }
     }
 
@@ -177,7 +216,54 @@ function loadSettings() {
     $("#bimg_model_override_name").val(settings.model_override_name);
     $("#bimg_model_override_controls").toggle(settings.model_override_enabled);
 
+    // Preset dropdown
+    populatePresetDropdown();
+
     loadCharacterPrompts();
+}
+
+// ─── Presets ────────────────────────────────────────────────────────────────────
+
+function snapshotPresetFromSettings(settings) {
+    const out = {};
+    for (const f of PRESET_FIELDS) {
+        out[f] = settings[f] ?? "";
+    }
+    return out;
+}
+
+function syncFieldToActivePreset(field) {
+    const settings = getSettings();
+    const name = settings.active_preset;
+    if (!settings.presets[name]) {
+        settings.presets[name] = snapshotPresetFromSettings(settings);
+    }
+    settings.presets[name][field] = settings[field];
+}
+
+function applyPreset(name) {
+    const settings = getSettings();
+    const preset = settings.presets[name];
+    if (!preset) return;
+    settings.active_preset = name;
+    for (const f of PRESET_FIELDS) {
+        settings[f] = preset[f] ?? "";
+        const selector = PRESET_FIELD_TO_INPUT[f];
+        if (selector) $(selector).val(settings[f]);
+    }
+    saveSettingsDebounced();
+}
+
+function populatePresetDropdown() {
+    const settings = getSettings();
+    const $sel = $("#bimg_preset_select").empty();
+    for (const name of Object.keys(settings.presets)) {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        $sel.append(option);
+    }
+    $sel.val(settings.active_preset);
 }
 
 function loadCharacterPrompts() {
@@ -655,17 +741,20 @@ function setupSettingsHandlers() {
     // System prompt
     $("#bimg_system_prompt").on("input", function () {
         getSettings().image_system_prompt = String($(this).val());
+        syncFieldToActivePreset("image_system_prompt");
         saveSettingsDebounced();
     });
 
     // Prompt prefixes
     $("#bimg_prompt_prefix").on("input", function () {
         getSettings().prompt_prefix = String($(this).val());
+        syncFieldToActivePreset("prompt_prefix");
         saveSettingsDebounced();
     });
 
     $("#bimg_negative_prompt").on("input", function () {
         getSettings().negative_prompt = String($(this).val());
+        syncFieldToActivePreset("negative_prompt");
         saveSettingsDebounced();
     });
 
@@ -676,22 +765,79 @@ function setupSettingsHandlers() {
     // Mode prompts
     $("#bimg_portrait_prompt").on("input", function () {
         getSettings().portrait_prompt = String($(this).val());
+        syncFieldToActivePreset("portrait_prompt");
         saveSettingsDebounced();
     });
 
     $("#bimg_scene_multi_prompt").on("input", function () {
         getSettings().scene_multi_prompt = String($(this).val());
+        syncFieldToActivePreset("scene_multi_prompt");
         saveSettingsDebounced();
     });
 
     $("#bimg_scene_single_prompt").on("input", function () {
         getSettings().scene_single_prompt = String($(this).val());
+        syncFieldToActivePreset("scene_single_prompt");
         saveSettingsDebounced();
     });
 
     $("#bimg_freeform_instruction").on("input", function () {
         getSettings().freeform_instruction = String($(this).val());
+        syncFieldToActivePreset("freeform_instruction");
         saveSettingsDebounced();
+    });
+
+    // Preset selector
+    $("#bimg_preset_select").on("change", function () {
+        applyPreset(String($(this).val()));
+    });
+
+    $("#bimg_preset_new").on("click", async function () {
+        const name = String(await callGenericPopup("Name for new preset:", POPUP_TYPE.INPUT) || "").trim();
+        if (!name) return;
+        const settings = getSettings();
+        if (settings.presets[name]) {
+            toastr.warning(`Preset "${name}" already exists.`, "Better Image");
+            return;
+        }
+        settings.presets[name] = snapshotPresetFromSettings(settings);
+        settings.active_preset = name;
+        populatePresetDropdown();
+        saveSettingsDebounced();
+        toastr.success(`Created preset "${name}".`, "Better Image");
+    });
+
+    $("#bimg_preset_rename").on("click", async function () {
+        const settings = getSettings();
+        const oldName = settings.active_preset;
+        const input = await callGenericPopup(`Rename "${oldName}" to:`, POPUP_TYPE.INPUT, oldName);
+        const newName = String(input || "").trim();
+        if (!newName || newName === oldName) return;
+        if (settings.presets[newName]) {
+            toastr.warning(`Preset "${newName}" already exists.`, "Better Image");
+            return;
+        }
+        settings.presets[newName] = settings.presets[oldName];
+        delete settings.presets[oldName];
+        settings.active_preset = newName;
+        populatePresetDropdown();
+        saveSettingsDebounced();
+    });
+
+    $("#bimg_preset_delete").on("click", async function () {
+        const settings = getSettings();
+        const name = settings.active_preset;
+        if (Object.keys(settings.presets).length <= 1) {
+            toastr.warning("Cannot delete the last remaining preset.", "Better Image");
+            return;
+        }
+        const ok = await callGenericPopup(`Delete preset "${name}"?`, POPUP_TYPE.CONFIRM);
+        if (!ok) return;
+        delete settings.presets[name];
+        const next = Object.keys(settings.presets)[0];
+        applyPreset(next);
+        populatePresetDropdown();
+        toastr.success(`Deleted preset "${name}".`, "Better Image");
     });
 
     // Generation parameters
