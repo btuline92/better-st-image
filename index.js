@@ -144,6 +144,7 @@ const defaultSettings = {
     temp_override_value: 0.30,
     model_override_enabled: false,
     model_override_name: "",
+    disable_thinking_enabled: false,
     presets: {},
     active_preset: "Default",
 };
@@ -215,6 +216,9 @@ function loadSettings() {
     $("#bimg_model_override_enabled").prop("checked", settings.model_override_enabled);
     $("#bimg_model_override_name").val(settings.model_override_name);
     $("#bimg_model_override_controls").toggle(settings.model_override_enabled);
+
+    // Disable thinking
+    $("#bimg_disable_thinking_enabled").prop("checked", settings.disable_thinking_enabled);
 
     // Preset dropdown
     populatePresetDropdown();
@@ -561,6 +565,21 @@ async function generateImagePrompt(mode, userInput = "") {
         }
     }
 
+    // Temporarily disable thinking/reasoning if enabled (chat completion only)
+    // For DeepSeek, 'min' actually forces 'high' inside ST's getReasoningEffort,
+    // so use 'auto' (model default, undefined) for that source.
+    let savedReasoning = null;
+    if (settings.disable_thinking_enabled && main_api === "openai") {
+        const source = oai_settings.chat_completion_source;
+        savedReasoning = {
+            reasoning_effort: oai_settings.reasoning_effort,
+            show_thoughts: oai_settings.show_thoughts,
+        };
+        oai_settings.reasoning_effort = source === "deepseek" ? "auto" : "min";
+        oai_settings.show_thoughts = false;
+        console.log(`[BetterImage] Thinking disabled — reasoning_effort: ${oai_settings.reasoning_effort}, show_thoughts: false (source: ${source})`);
+    }
+
     try {
         const result = await generateRaw({
             prompt: fullPrompt + "\n\nRespond with ONLY the comma-separated tags. Your entire reply must be the tag list.",
@@ -596,6 +615,11 @@ async function generateImagePrompt(mode, userInput = "") {
         // Remove the model override hook in case it never fired (e.g. error before request)
         if (modelOverrideHook) {
             eventSource.removeListener(event_types.CHAT_COMPLETION_SETTINGS_READY, modelOverrideHook);
+        }
+        // Restore reasoning settings
+        if (savedReasoning) {
+            oai_settings.reasoning_effort = savedReasoning.reasoning_effort;
+            oai_settings.show_thoughts = savedReasoning.show_thoughts;
         }
     }
 }
@@ -906,6 +930,12 @@ function setupSettingsHandlers() {
 
     $("#bimg_model_override_name").on("input", function () {
         getSettings().model_override_name = String($(this).val());
+        saveSettingsDebounced();
+    });
+
+    // Disable thinking
+    $("#bimg_disable_thinking_enabled").on("change", function () {
+        getSettings().disable_thinking_enabled = Boolean($(this).prop("checked"));
         saveSettingsDebounced();
     });
 }
